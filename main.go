@@ -44,6 +44,7 @@ type Settings struct {
 	Location_confidence    int64 `json:"location_confidence"`
 	Last_seen_threshold    int64 `json:"last_seen_threshold"`
 	Last_reading_threshold int64 `json:"last_reading_threshold"`
+	HA_send_changes_only   bool  `json:"ha_send_changes_only"`
 }
 
 type Incoming_json struct {
@@ -169,6 +170,7 @@ var settings = Settings{
 	Location_confidence:    8,
 	Last_seen_threshold:    45,
 	Last_reading_threshold: 8,
+	HA_send_changes_only:   false,
 }
 
 // utility function
@@ -334,6 +336,10 @@ func getLikelyLocations(last_seen_threshold int64, last_reading_threshold int64,
 				panic(err)
 			}
 
+			if settings.HA_send_changes_only {
+				sendHARoomMessage(beacon.Beacon_id, beacon.Name, best_location.distance, best_location.name, cl)
+			}
+
 			beacon.Previous_confident_location = best_location.name
 
 			// clear all previous entries of this beacon from all locations, except this best one
@@ -371,7 +377,9 @@ func getLikelyLocations(last_seen_threshold int64, last_reading_threshold int64,
 		http_results_lock.Unlock()
 
 		if best_location.name != "" {
-			sendHARoomMessage(beacon.Beacon_id, beacon.Name, best_location.distance, best_location.name, cl)
+			if !settings.HA_send_changes_only {
+				sendHARoomMessage(beacon.Beacon_id, beacon.Name, best_location.distance, best_location.name, cl)
+			}
 		}
 
 		//fmt.Printf("\n\n%s is most likely in %s with average distance %f \n\n", beacon.Name, best_location.name, best_location.distance)
@@ -457,8 +465,8 @@ func IncomingMQTTProcessor(updateInterval time.Duration, cl *client.Client, db *
 		for _, beacon := range BEACONS.Beacons {
 			fmt.Println("Database has known beacon: " + beacon.Beacon_id + " " + beacon.Name)
 		}
-		fmt.Println("Settings has %#v\n", settings)
 	*/
+	//fmt.Println("Settings has %#v\n", settings)
 
 	Latest_beacons_list = make(map[string]Beacon)
 
@@ -608,13 +616,6 @@ func main() {
 		panic(err)
 	}
 
-	fmt.Println(" _   _    _    ____  ______   __  ____  _   _ ____  ____  _     _____ ____\n| | | |  / \\  |  _ \\|  _ \\ \\ / / | __ )| | | | __ )| __ )| |   | ____/ ___|\n| |_| | / _ \\ | |_) | |_) \\ V /  |  _ \\| | | |  _ \\|  _ \\| |   |  _| \\___ \\\n|  _  |/ ___ \\|  __/|  __/ | |   | |_) | |_| | |_) | |_) | |___| |___ ___) |\n|_| |_/_/   \\_\\_|   |_|    |_|   |____/ \\___/|____/|____/|_____|_____|____/")
-	fmt.Println("\n ")
-	fmt.Println("CONNECTED TO MQTT")
-	fmt.Println("\n ")
-	fmt.Println("Visit http://" + *http_host_path_ptr + " on your browser to see the web interface")
-	fmt.Println("\n ")
-
 	incoming_updates_chan := IncomingMQTTProcessor(1*time.Second, cli, db)
 
 	// Subscribe to topics.
@@ -638,6 +639,13 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	fmt.Println(" _   _    _    ____  ______   __  ____  _   _ ____  ____  _     _____ ____\n| | | |  / \\  |  _ \\|  _ \\ \\ / / | __ )| | | | __ )| __ )| |   | ____/ ___|\n| |_| | / _ \\ | |_) | |_) \\ V /  |  _ \\| | | |  _ \\|  _ \\| |   |  _| \\___ \\\n|  _  |/ ___ \\|  __/|  __/ | |   | |_) | |_| | |_) | |_) | |___| |___ ___) |\n|_| |_/_/   \\_\\_|   |_|    |_|   |____/ \\___/|____/|____/|_____|_____|____/")
+	fmt.Println("\n ")
+	fmt.Println("CONNECTED TO MQTT")
+	fmt.Println("\n ")
+	fmt.Println("Visit http://" + *http_host_path_ptr + " on your browser to see the web interface")
+	fmt.Println("\n ")
 
 	go startServer()
 

@@ -13,10 +13,10 @@
 			<th>Delete</th>
 		</tr>
     <tr each={ beacons }>
-			<td>{ name }</td>
-			<td>{ location }</td>
-			<td>{ moment(last_seen*1000).fromNow() }</td> 
-			<td><a href="#edit-beacon/{ beacon_id }/{ name }">Edit this beacon</a></td>
+			<td class="{ class }">{ name }</td>
+			<td class="{ class }">{ location }</td>
+			<td class="{ class }">{ last_seen_string }</td> 
+			<td><a href="#edit-beacon/{ beacon_id }/{ url_name }">Edit this beacon</a></td>
 			<td><a onclick={ delete_beacon } beacon_name="{ beacon_name } "beacon_id="{ beacon_id }" href="">Delete this beacon</a></td>
     </tr>
   </table>
@@ -41,7 +41,15 @@
 			$.getJSON( "api/results", function( data ) {
 					var bs = []
 					$.each(data, function(k, v) {
-								if(v && v.location != "") {
+								if(v) {
+									v.last_seen_string = moment(v.last_seen*1000).fromNow() 
+									if(v.location == "")
+									{
+										v.location = "Not Found"
+										v.last_seen_string = " - "
+										v.class = "grey-text text-darken-1"
+									}
+									v["url_name"] = encodeURIComponent(v.name);
 									bs.push(v);
 								}
 					});
@@ -56,7 +64,15 @@
 			bs = [];
 							
 			$.each(msg, function(k, v) {
-				if(v && v.location != "") {
+				if(v) {
+				  v.last_seen_string = moment(v.last_seen*1000).fromNow() 
+					if(v.location == "")
+					{
+						v.location = "Not Found"
+						v.last_seen_string = " - "
+						v.class = "grey-text text-darken-1"
+					}
+					v["url_name"] = encodeURIComponent(v.name);
 					bs.push(v);
 				}
 			});
